@@ -173,6 +173,7 @@ def NextState(config, velocities, dt, w_max):
     """Function for milestone 1"""
     # config: chassis phi, chassis x, chassis y, J1, J2, J3, J4, J5, W1, W2, W3, W4, gripper state
     # velocities: 4 u vars, 5 arm joint speeds
+    new_config = config
     print("me")
     phi, x, y = config[0], config[1], config[2]
     T_sb_q = np.array([[np.cos(phi), -np.sin(phi), 0, x],
@@ -182,10 +183,24 @@ def NextState(config, velocities, dt, w_max):
     
     u_vals = velocities[:4]
     Vb = F_pseduo @ u_vals
-    ans = mr.EulerStep
+    Vb6 = [0, 0, Vb[0], Vb[1], Vb[2], 0]
+
+    for i in range(3,7):
+        new_config[i] = config[i] + (velocities[i+1] * dt)
+
+    for j in range(8,11):
+        new_config[i] = config[i] + (velocities[i+1] * dt)
+
+    Tse = T_sb_q @ T_b0 @ T_0e
+
+    T_0e = mr.FKinSpace()
     # new arm joint theta = old arm joint angles + (joint speeds * dt)
     # new wheel angles = old wheel joint angles + (wheels speeds * dt)
     # new chassis config obtained from odometry
 
+    # Return a new config
+
 ################# FOR PART 2 ###################
 # TrajectoryGenerator(T_sei, T_sci, T_scf, T_cegrasp, T_ces, k)
+for q in range(0,5):
+    print(q)
