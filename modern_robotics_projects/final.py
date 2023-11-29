@@ -46,16 +46,16 @@ T_cegrasp = np.array([[-1, 0, 0, 0],
 
 k = 1
 
-T_sb_q = np.array([[np.cos(phi), -np.sin(phi), 0, x],
-                    [np.sin(phi), np.cos(phi), 0, y],
-                    [0, 0, 1, 0.0963],
-                    [0, 0, 0, 1]])
 
 wheel_radius = 0.0475
 l_wheel = 0.47/2
 w_wheel = 0.15
 gamma_13 = -np.pi/4
 gamma_24 = np.pi/4
+
+F_pseduo = np.array([[-1/(l_wheel+w_wheel), 1/(l_wheel+w_wheel), 1/(l_wheel+w_wheel), -1/(l_wheel+w_wheel)],
+                    [1, 1, 1, 1],
+                    [-1, 1, -1, 1]])*(wheel_radius/4)
 
 def TrajectoryGenerator(T_sei, T_sci, T_scf, T_cegrasp, T_cestandoff, k):
     """Generates the reference trajectory for the end effector frame"""
@@ -172,7 +172,16 @@ def TrajectoryGenerator(T_sei, T_sci, T_scf, T_cegrasp, T_cestandoff, k):
 def NextState(config, velocities, dt, w_max):
     """Function for milestone 1"""
     # config: chassis phi, chassis x, chassis y, J1, J2, J3, J4, J5, W1, W2, W3, W4, gripper state
+    # velocities: 4 u vars, 5 arm joint speeds
     print("me")
+    phi, x, y = config[0], config[1], config[2]
+    T_sb_q = np.array([[np.cos(phi), -np.sin(phi), 0, x],
+                    [np.sin(phi), np.cos(phi), 0, y],
+                    [0, 0, 1, 0.0963],
+                    [0, 0, 0, 1]])
+    
+    u_vals = velocities[:4]
+    Vb = F_pseduo @ u_vals
     ans = mr.EulerStep
     # new arm joint theta = old arm joint angles + (joint speeds * dt)
     # new wheel angles = old wheel joint angles + (wheels speeds * dt)
@@ -180,4 +189,3 @@ def NextState(config, velocities, dt, w_max):
 
 ################# FOR PART 2 ###################
 # TrajectoryGenerator(T_sei, T_sci, T_scf, T_cegrasp, T_ces, k)
-
