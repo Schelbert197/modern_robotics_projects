@@ -46,13 +46,15 @@ T_cegrasp = np.array([[-1, 0, 0, 0],
 
 k = 1
 
-identity = np.array([[1, 0, 0, 0],
-                    [0, 1, 0, 0],
-                    [0, 0, 1, 0],
-                    [0, 0, 0, 1]])
+identity6 = np.array([[1, 0, 0, 0, 0, 0],
+                    [0, 1, 0, 0, 0, 0],
+                    [0, 0, 1, 0, 0, 0],
+                    [0, 0, 0, 1, 0, 0],
+                    [0, 0, 0, 0, 1, 0],
+                    [0, 0, 0, 0, 0, 1]])
 
-Ki = 0.0*identity
-Kp = 0.0*identity
+Ki = 0.0*identity6
+Kp = 0.0*identity6
 
 
 wheel_radius = 0.0475
@@ -262,26 +264,35 @@ def get_current_X(config, Tb0, M_0e, Blist):
 def FeedbackControl(Tse, Tse_d, Tse_d_next, Kp, Ki, dt):
     """Feedforward and feedback control"""
     X_inv = mr.TransInv(Tse)
-    # X_inv = np.linalg.inv(Tse) other option
+    print(f"Tse: {Tse}")
     X_err_twist = mr.se3ToVec(mr.MatrixLog6(X_inv@Tse_d))
+    print(f"Xerr: {X_err_twist}")
 
-    Vd = mr.se3ToVec((1/dt)*mr.MatrixLog6(Tse_d@Tse_d_next))
+    Vd = mr.se3ToVec((1/dt)*mr.MatrixLog6(mr.TransInv(Tse_d)@Tse_d_next))
+    print(f"Vd: {Vd}")
+
     Vb = mr.Adjoint(X_inv@Tse_d)@Vd
+    print(f"Vb: {Vb}")
 
     V = Vb + Kp@X_err_twist + Ki@(X_err_twist + (dt * X_err_twist))
+    print(f"V: {V}")
     
     return V
 
-Xd = np.array([[0, 0, 1, 0.5],
-                [0, 1, 0, 0],
-                [-1, 0, 0, 0.5],
-                [0, 0, 0, 1]])
 
-Xd_next = np.array([[0, 0, 1, 0.6],
-                    [0, 1, 0, 0],
-                    [-1, 0, 0, 0.3],
-                    [0, 0, 0, 1]])
+######### Milestone 3 Test ##########
+# Xd = np.array([[0, 0, 1, 0.5],
+#                 [0, 1, 0, 0],
+#                 [-1, 0, 0, 0.5],
+#                 [0, 0, 0, 1]])
 
-m3_config = [0,0,0,0,0,0.2,-1.6,0]
+# Xd_next = np.array([[0, 0, 1, 0.6],
+#                     [0, 1, 0, 0],
+#                     [-1, 0, 0, 0.3],
+#                     [0, 0, 0, 1]])
 
-print(get_current_X(m3_config, T_b0, M_0e, Blist))
+# m3_config = [0,0,0,0,0,0.2,-1.6,0]
+
+# Tse_test = get_current_X(m3_config, T_b0, M_0e, Blist)
+
+# print(FeedbackControl(Tse_test, Xd, Xd_next, Kp, Ki, 0.01))
