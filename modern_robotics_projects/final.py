@@ -3,11 +3,11 @@ import numpy as np
 import math
 import csv
 
-Blist = [[0,         0,         1,         0,    0.033,        0],
-         [0,        -1,         0,   -0.5076,        0,        0],
-         [0,        -1,         0,   -0.3526,        0,        0],
-         [0,        -1,         0,   -0.2176,        0,        0],
-         [0,         0,         1,         0,        0,        0]]
+Blist = np.array([[0,         0,         1,         0,    0.033,        0],
+                [0,        -1,         0,   -0.5076,        0,        0],
+                [0,        -1,         0,   -0.3526,        0,        0],
+                [0,        -1,         0,   -0.2176,        0,        0],
+                [0,         0,         1,         0,        0,        0]]).T
 
 T_sci = np.array([[1, 0, 0, 1],
                   [0, 1, 0, 0],
@@ -45,6 +45,14 @@ T_cegrasp = np.array([[-1, 0, 0, 0],
                     [0, 0, 0, 1]])
 
 k = 1
+
+identity = np.array([[1, 0, 0, 0],
+                    [0, 1, 0, 0],
+                    [0, 0, 1, 0],
+                    [0, 0, 0, 1]])
+
+Ki = 0.0*identity
+Kp = 0.0*identity
 
 
 wheel_radius = 0.0475
@@ -218,13 +226,62 @@ with open('traj.csv', 'w', newline='') as f:
     writer = csv.writer(f)
     writer.writerows(csv_list)
 
-T_sb_q = np.array([[np.cos(phi), -np.sin(phi), 0, x],
-                    [np.sin(phi), np.cos(phi), 0, y],
-                    [0, 0, 1, 0.0963],
+    
+
+# T_sb_q = np.array([[np.cos(phi), -np.sin(phi), 0, x],
+#                     [np.sin(phi), np.cos(phi), 0, y],
+#                     [0, 0, 1, 0.0963],
+#                     [0, 0, 0, 1]])
+
+# u_vals = velocities[:4]
+# Vb = F_pseduo @ u_vals
+# Vb6 = [0, 0, Vb[0], Vb[1], Vb[2], 0]
+
+# mr.MatrixExp6(mr.VecTose3(Vb6))
+
+
+
+def get_current_X(config, Tb0, M_0e, Blist):
+    """Helper function for getting the current X matrix"""
+    # X = Tse = Tsb_q @ Tb0 T0e
+    phi, x, y = config[0], config[1], config[2]
+    
+    J1,J2,J3,J4,J5 = config[3], config[4], config[5], config[6], config[7]
+    thetalist_t = [J1,J2,J3,J4,J5]
+
+    T_sb_q = np.array([[np.cos(phi), -np.sin(phi), 0, x],
+                        [np.sin(phi), np.cos(phi), 0, y],
+                        [0, 0, 1, 0.0963],
+                        [0, 0, 0, 1]])
+    T_0e = mr.FKinBody(M_0e, Blist, thetalist_t)
+
+    Tse = T_sb_q @ Tb0 @ T_0e
+
+    return Tse
+
+def FeedbackControl(Tse, Tse_d, Tse_d_next, Kp, Ki, dt):
+    """Feedforward and feedback control"""
+    X_inv = mr.TransInv(Tse)
+    # X_inv = np.linalg.inv(Tse) other option
+    X_err_twist = mr.se3ToVec(mr.MatrixLog6(X_inv@Tse_d))
+
+    Vd = mr.se3ToVec((1/dt)*mr.MatrixLog6(Tse_d@Tse_d_next))
+    Vb = mr.Adjoint(X_inv@Tse_d)@Vd
+
+    V = Vb + Kp@X_err_twist + Ki@(X_err_twist + (dt * X_err_twist))
+    
+    return V
+
+Xd = np.array([[0, 0, 1, 0.5],
+                [0, 1, 0, 0],
+                [-1, 0, 0, 0.5],
+                [0, 0, 0, 1]])
+
+Xd_next = np.array([[0, 0, 1, 0.6],
+                    [0, 1, 0, 0],
+                    [-1, 0, 0, 0.3],
                     [0, 0, 0, 1]])
 
-u_vals = velocities[:4]
-Vb = F_pseduo @ u_vals
-Vb6 = [0, 0, Vb[0], Vb[1], Vb[2], 0]
+m3_config = [0,0,0,0,0,0.2,-1.6,0]
 
-mr.MatrixExp6(mr.VecTose3(Vb6))
+print(get_current_X(m3_config, T_b0, M_0e, Blist))
