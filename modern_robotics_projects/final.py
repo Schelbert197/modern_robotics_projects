@@ -174,26 +174,27 @@ def NextState(config, velocities, dt, w_max):
     # config: chassis phi, chassis x, chassis y, J1, J2, J3, J4, J5, W1, W2, W3, W4, gripper state
     # velocities: 4 u vars, 5 arm joint speeds
     new_config = config
-    print("me")
+
     phi, x, y = config[0], config[1], config[2]
-    T_sb_q = np.array([[np.cos(phi), -np.sin(phi), 0, x],
-                    [np.sin(phi), np.cos(phi), 0, y],
-                    [0, 0, 1, 0.0963],
-                    [0, 0, 0, 1]])
+    
     
     u_vals = velocities[:4]
     Vb = F_pseduo @ u_vals
     Vb6 = [0, 0, Vb[0], Vb[1], Vb[2], 0]
 
-    for i in range(3,7):
+    for i in range(3,8):
         new_config[i] = config[i] + (velocities[i+1] * dt)
 
-    for j in range(8,11):
-        new_config[i] = config[i] + (velocities[i+1] * dt)
+    for j in range(8,12):
+        new_config[j] = config[j] + (velocities[j-8] * dt)
 
-    Tse = T_sb_q @ T_b0 @ T_0e
+    new_config [0] = config[0] + (Vb[0] * dt)
+    new_config [1] = config[1] + (Vb[1] * dt)
+    new_config [2] = config[2] + (Vb[2] * dt)
 
-    T_0e = mr.FKinSpace()
+    return new_config
+    # Tse = T_sb_q @ T_b0 @ T_0e
+
     # new arm joint theta = old arm joint angles + (joint speeds * dt)
     # new wheel angles = old wheel joint angles + (wheels speeds * dt)
     # new chassis config obtained from odometry
@@ -202,5 +203,28 @@ def NextState(config, velocities, dt, w_max):
 
 ################# FOR PART 2 ###################
 # TrajectoryGenerator(T_sei, T_sci, T_scf, T_cegrasp, T_ces, k)
-for q in range(0,5):
-    print(q)
+
+config = [0,0,0,0,0,0,0,0,0,0,0,0,0]
+velocities = [-10,10,-10,10,0,0,0,0,0]
+csv_list = []
+for i in range(0,100):
+    csv_line = []
+    next_c = NextState(config, velocities, 0.01, 10)
+    for j in range(0,len(next_c)):
+        csv_line.append(next_c[j])
+    csv_list.append(csv_line)
+
+with open('traj.csv', 'w', newline='') as f:
+    writer = csv.writer(f)
+    writer.writerows(csv_list)
+
+T_sb_q = np.array([[np.cos(phi), -np.sin(phi), 0, x],
+                    [np.sin(phi), np.cos(phi), 0, y],
+                    [0, 0, 1, 0.0963],
+                    [0, 0, 0, 1]])
+
+u_vals = velocities[:4]
+Vb = F_pseduo @ u_vals
+Vb6 = [0, 0, Vb[0], Vb[1], Vb[2], 0]
+
+mr.MatrixExp6(mr.VecTose3(Vb6))
