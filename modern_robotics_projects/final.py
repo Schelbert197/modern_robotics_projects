@@ -212,6 +212,19 @@ def NextState(config, velocities, dt, w_max):
     Vb = F_pseudo @ u_vals
     Vb6 = [0, 0, Vb[0], Vb[1], Vb[2], 0]
 
+    if 0.0001 > Vb[0] > -0.0001:
+        Vb = Vb
+    else:
+        Vb[0] = Vb[0]
+        Vb[1] = ((Vb[1]*np.sin(Vb[0])) + (Vb[2]*(np.cos(Vb[0])-1)))/Vb[0]
+        Vb[2] = ((Vb[2]*np.sin(Vb[0])) + (Vb[1]*(1-np.cos(Vb[0]))))/Vb[0]
+
+    q_rot = np.array([[1,0,0],
+                      [0,np.cos(phi),-np.sin(phi)],
+                      [0,np.sin(phi),np.cos(phi)]])
+    
+    Vb = q_rot@Vb
+
     for i in range(3,8):
         new_config[i] = config[i] + (velocities[i+1] * dt)
 
