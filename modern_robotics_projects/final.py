@@ -2,6 +2,7 @@ import modern_robotics as mr
 import numpy as np
 import math
 import csv
+import matplotlib.pyplot as plt
 
 Blist = np.array([[0,         0,         1,         0,    0.033,        0],
                 [0,        -1,         0,   -0.5076,        0,        0],
@@ -223,7 +224,8 @@ def NextState(config, velocities, dt, w_max):
                       [0,np.cos(phi),-np.sin(phi)],
                       [0,np.sin(phi),np.cos(phi)]])
     
-    Vb = q_rot@Vb
+    # This rotation takes the body twist and trasfers it back to world frame
+    Vb = q_rot@Vb 
 
     for i in range(3,8):
         new_config[i] = config[i] + (velocities[i+1] * dt)
@@ -293,7 +295,7 @@ def FeedbackControl(Tse, Tse_d, Tse_d_next, Kp, Ki, dt):
 
     V = Vb + Kp@X_err_twist + Ki@(X_err_twist + (dt * X_err_twist))
 
-    return V
+    return V, X_err_twist
 
 def GetVelocities(J_pseudo,V):
     """Calculates the next set of velocities for the robot
@@ -318,6 +320,8 @@ def TrajtoMatrix(Trajectory):
     return T_mat
 
 ## Trying the full task
+
+# Generate the desired trajectory
 EE_traj_desired = TrajectoryGenerator(T_sei, T_sci, T_scf, T_cegrasp, T_ces, k)
 
 current_config = [0,0,0,0,0,0.2,-1.6,0,0,0,0,0,0]
@@ -329,23 +333,58 @@ with open('final_traj.csv', 'w', newline='') as f:
     writer = csv.writer(f)
     writer.writerow(current_config)
 
+    X_errors = []
+    times = []
+
     for i in range(0,len(EE_traj_desired)-1):
+        #Calculates the current EE configuration and the pseudoinverse Jacobian
         Tse_current, J_pseudo_current = GetCurrentXJacobian(current_config,T_b0,M_0e,Blist)
 
+        # Calculates the desired EE position based on the generated trajectory
         T_se_desired = TrajtoMatrix(EE_traj_desired[i])
 
+        # Calculates the next desired EE position based on the generated trajectory
         T_se_desired_next = TrajtoMatrix(EE_traj_desired[i+1])
 
-        V_twist = FeedbackControl(Tse_current,T_se_desired,T_se_desired_next,Kp,Ki,dt)
+        # Calculates the twist and the error twist of the robot at the timestep
+        V_twist, X_err_current = FeedbackControl(Tse_current,T_se_desired,T_se_desired_next,Kp,Ki,dt)
 
+        # Creating the lists to plot the error as the function runs
+        X_errors.append(X_err_current)
+        times.append(i*0.01)
+
+        # Calculates the velocities for the wheels and the arm joints
         velocities = GetVelocities(J_pseudo_current,V_twist)
+
+        # Calculates the next configuration based on the configuration at the current timestep
         new_configuration = NextState(current_config,velocities,dt,10)
+
+        # Establishes the current configuration for the next loop
         current_config = new_configuration
+
+        # Ensures that the gripper state is maintained
         current_config[-1] = EE_traj_desired[i][-1]
+
+        # Append the list of current configurations
         bot_config_list.append(current_config)
         # print(current_config[1])
         writer.writerow(current_config)
 
+    fig = plt.figure()
+
+    ax = fig.add_subplot()
+
+    X_errors = np.array(X_errors)
+    ax.plot(times, X_errors[:,0], c='r', label='Omega x error')
+    ax.plot(times, X_errors[:,1], c='g', label='Omega y error')
+    ax.plot(times, X_errors[:,2], c='b', label='Omega z error')
+    ax.plot(times, X_errors[:,3], c='y', label='Linear x error')
+    ax.plot(times, X_errors[:,4], c='orange', label='Linear y error')
+    ax.plot(times, X_errors[:,5], c='purple', label='Linear z error')
+    plt.legend()
+    ax.set_xlabel('Time')
+    ax.set_ylabel('Error')
+    plt.show()
 
 
 ######### Milestone 3 Test ##########
