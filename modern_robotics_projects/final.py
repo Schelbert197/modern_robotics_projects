@@ -54,7 +54,7 @@ identity6 = np.array([[1, 0, 0, 0, 0, 0],
                     [0, 0, 0, 0, 0, 1]])
 
 Ki = 0.0*identity6
-Kp = 0.0*identity6
+Kp = 1.0*identity6
 
 
 wheel_radius = 0.0475
@@ -63,9 +63,11 @@ w_wheel = 0.15
 gamma_13 = -np.pi/4
 gamma_24 = np.pi/4
 
-F_pseduo = np.array([[-1/(l_wheel+w_wheel), 1/(l_wheel+w_wheel), 1/(l_wheel+w_wheel), -1/(l_wheel+w_wheel)],
+F_pseudo = np.array([[-1/(l_wheel+w_wheel), 1/(l_wheel+w_wheel), 1/(l_wheel+w_wheel), -1/(l_wheel+w_wheel)],
                     [1, 1, 1, 1],
                     [-1, 1, -1, 1]])*(wheel_radius/4)
+
+F6 = np.array([[0, 0, 0, 0],[0, 0, 0, 0],F_pseudo[0],F_pseudo[1],F_pseudo[2],[0, 0, 0, 0]])
 
 def TrajectoryGenerator(T_sei, T_sci, T_scf, T_cegrasp, T_cestandoff, k):
     """Generates the reference trajectory for the end effector frame"""
@@ -189,7 +191,7 @@ def NextState(config, velocities, dt, w_max):
     
     
     u_vals = velocities[:4]
-    Vb = F_pseduo @ u_vals
+    Vb = F_pseudo @ u_vals
     Vb6 = [0, 0, Vb[0], Vb[1], Vb[2], 0]
 
     for i in range(3,8):
@@ -243,7 +245,7 @@ with open('traj.csv', 'w', newline='') as f:
 
 
 
-def get_current_X(config, Tb0, M_0e, Blist):
+def GetCurrentXJacobian(config, Tb0, M_0e, Blist):
     """Helper function for getting the current X matrix"""
     # X = Tse = Tsb_q @ Tb0 T0e
     phi, x, y = config[0], config[1], config[2]
@@ -259,40 +261,69 @@ def get_current_X(config, Tb0, M_0e, Blist):
 
     Tse = T_sb_q @ Tb0 @ T_0e
 
-    return Tse
+    J_base = mr.Adjoint(mr.TransInv(Tse)@T_sb_q)@F6
+
+    J_arm = mr.JacobianBody(Blist, thetalist_t)
+    Je = np.hstack((J_base,J_arm))
+
+    # If tall
+    # J_pseduo = np.linalg.inv(Je.T@Je)@Je.T
+    # If wide
+    J_pseudo = Je.T@np.linalg.inv(Je@Je.T)
+
+    
+
+    return Tse, J_pseudo
 
 def FeedbackControl(Tse, Tse_d, Tse_d_next, Kp, Ki, dt):
     """Feedforward and feedback control"""
     X_inv = mr.TransInv(Tse)
-    print(f"Tse: {Tse}")
+
     X_err_twist = mr.se3ToVec(mr.MatrixLog6(X_inv@Tse_d))
-    print(f"Xerr: {X_err_twist}")
 
     Vd = mr.se3ToVec((1/dt)*mr.MatrixLog6(mr.TransInv(Tse_d)@Tse_d_next))
-    print(f"Vd: {Vd}")
 
     Vb = mr.Adjoint(X_inv@Tse_d)@Vd
-    print(f"Vb: {Vb}")
 
     V = Vb + Kp@X_err_twist + Ki@(X_err_twist + (dt * X_err_twist))
-    print(f"V: {V}")
-    
+
     return V
+
+def GetVelocities(J_pseudo,V):
+    u_thetadot = J_pseudo@V
+    return u_thetadot
 
 
 ######### Milestone 3 Test ##########
-# Xd = np.array([[0, 0, 1, 0.5],
-#                 [0, 1, 0, 0],
-#                 [-1, 0, 0, 0.5],
-#                 [0, 0, 0, 1]])
+Xd = np.array([[0, 0, 1, 0.5],
+                [0, 1, 0, 0],
+                [-1, 0, 0, 0.5],
+                [0, 0, 0, 1]])
 
-# Xd_next = np.array([[0, 0, 1, 0.6],
-#                     [0, 1, 0, 0],
-#                     [-1, 0, 0, 0.3],
-#                     [0, 0, 0, 1]])
+Xd_next = np.array([[0, 0, 1, 0.6],
+                    [0, 1, 0, 0],
+                    [-1, 0, 0, 0.3],
+                    [0, 0, 0, 1]])
 
-# m3_config = [0,0,0,0,0,0.2,-1.6,0]
+m3_config = [0,0,0,0,0,0.2,-1.6,0]
 
-# Tse_test = get_current_X(m3_config, T_b0, M_0e, Blist)
+Tse_test, J_pseudo_test = GetCurrentXJacobian(m3_config, T_b0, M_0e, Blist)
 
-# print(FeedbackControl(Tse_test, Xd, Xd_next, Kp, Ki, 0.01))
+V_test = FeedbackControl(Tse_test, Xd, Xd_next, Kp, Ki, 0.01)
+print(V_test)
+print(GetVelocities(J_pseudo_test,V_test))
+
+
+
+# thetalist_j = [0,0,0.2,-1.6,0]
+# J_arm_test = mr.JacobianBody(Blist, thetalist_j)
+# Je = np.hstack((J_base_test,J_arm_test))
+
+# # If tall
+# # J_pseduo = np.linalg.inv(Je.T@Je)@Je.T
+# # If wide
+# J_pseduo = Je.T@np.linalg.inv(Je@Je.T)
+
+# print(Je)
+# u_theta = J_pseduo@V_test
+# print(u_theta)
