@@ -285,12 +285,14 @@ def FeedbackControl(Tse, Tse_d, Tse_d_next, Kp, Ki, dt):
         Ki: The integral gain matrix of the controller
     Returns:
         V: The twist of the robot"""
+    # Invert the current configuration matrix
     X_inv = mr.TransInv(Tse)
 
+    # Compute the error twist of the configuration
     X_err_twist = mr.se3ToVec(mr.MatrixLog6(X_inv@Tse_d))
 
+    # Calculate twist vectors for the V(t) equation
     Vd = mr.se3ToVec((1/dt)*mr.MatrixLog6(mr.TransInv(Tse_d)@Tse_d_next))
-
     Vb = mr.Adjoint(X_inv@Tse_d)@Vd
 
     V = Vb + Kp@X_err_twist + Ki@(X_err_twist + (dt * X_err_twist))
@@ -385,6 +387,10 @@ with open('final_traj.csv', 'w', newline='') as f:
     ax.set_xlabel('Time')
     ax.set_ylabel('Error')
     plt.show()
+
+with open('X_error.csv', 'w', newline='') as f:
+    writer = csv.writer(f)
+    writer.writerows(X_errors)
 
 
 ######### Milestone 3 Test ##########
