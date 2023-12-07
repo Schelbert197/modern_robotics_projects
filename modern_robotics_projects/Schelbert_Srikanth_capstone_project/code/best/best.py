@@ -53,7 +53,7 @@ identity6 = np.array([[1, 0, 0, 0, 0, 0],
                       [0, 0, 0, 0, 1, 0],
                       [0, 0, 0, 0, 0, 1]])
 
-Ki = 10.50*identity6  # 10.5
+Ki = 0.50*identity6  # 10.5
 Kp = 1.0*identity6
 dt = 0.01
 
@@ -467,7 +467,7 @@ with open('new_traj_plot.csv', 'w', newline='') as f:
     plt.show()
 
 print("Generating Plot")
-with open('X_error.csv', 'w', newline='') as f:
+with open('X_error_best.csv', 'w', newline='') as f:
     writer = csv.writer(f)
     writer.writerows(X_errors)
 print("Done")

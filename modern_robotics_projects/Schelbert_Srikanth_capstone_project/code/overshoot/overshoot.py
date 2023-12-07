@@ -467,7 +467,7 @@ with open('new_traj_plot.csv', 'w', newline='') as f:
     plt.show()
 
 print("Generating Plot")
-with open('X_error.csv', 'w', newline='') as f:
+with open('X_error_overshoot.csv', 'w', newline='') as f:
     writer = csv.writer(f)
     writer.writerows(X_errors)
 print("Done")
