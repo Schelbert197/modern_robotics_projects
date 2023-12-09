@@ -6,7 +6,6 @@ R = np.array([[0, 0, 1],
               [1, 0, 0],
               [0, 1, 0]])
 invR = mr.RotInv(R)
-# print(invR)
 
 R_13 = np.array([[-0.7071, 0, -0.7071],
                  [0, 1, 0],
@@ -25,8 +24,8 @@ R_12 = np.array([[0.7071, 0, -0.7071],
                  [0.7071, 0, 0.7071]])
 
 R_34 = np.array([[0.6428, 0, -0.7660],
-                  [0, 1, 0],
-                  [0.7660, 0, 0.6428]])
+                [0, 1, 0],
+                [0.7660, 0, 0.6428]])
 
 R_s6 = np.array([[0.9418, 0.3249, -0.0859],
                  [0.3249, -0.9456, -0.0151],
@@ -63,6 +62,6 @@ print(omega5)
 print(omega6)
 
 # Thetas (they are multiplied by -1 if omega is flipped)
-print(-theta1, -theta2 ,-theta3, -theta4, theta5, theta6)
+print(-theta1, -theta2, -theta3, -theta4, theta5, theta6)
 
 print(R_sb)

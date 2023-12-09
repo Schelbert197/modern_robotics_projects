@@ -154,6 +154,8 @@ def GetCurrentXJacobian(config, Tb0, M_0e, Blist):
     J_arm = mr.JacobianBody(Blist, thetalist_t)
     Je = np.hstack((J_base, J_arm))
 
+    print(f"Je: {Je}")
+
     # If tall
     # J_pseduo = np.linalg.inv(Je.T@Je)@Je.T
     # If wide
@@ -163,41 +165,8 @@ def GetCurrentXJacobian(config, Tb0, M_0e, Blist):
 
 
 Tse_test, J_pseudo_test = GetCurrentXJacobian(m3_config, T_b0, M_0e, Blist)
+print(f"Tse_test: {Tse_test}")
 
 V_test = FeedbackControl(Tse_test, Xd, Xd_next, Kp, Ki, 0.01)
 print(V_test)
-print(GetVelocities(J_pseudo_test, V_test))
-
-
-thetalist_j = [0, 0, 0.2, -1.6, 0]
-J_arm_test = mr.JacobianBody(Blist, thetalist_j)
-Je = np.hstack((J_base_test, J_arm_test))
-
-# If tall
-# J_pseduo = np.linalg.inv(Je.T@Je)@Je.T
-# If wide
-J_pseduo = Je.T@np.linalg.inv(Je@Je.T)
-
-print(Je)
-u_theta = J_pseduo@V_test
-print(u_theta)
-# Tse = T_sb_q @ T_b0 @ T_0e
-
-# new arm joint theta = old arm joint angles + (joint speeds * dt)
-# new wheel angles = old wheel joint angles + (wheels speeds * dt)
-# new chassis config obtained from odometry
-
-# Return a new config
-
-
-################# MILESTONE 3 TESTING ############
-# T_sb_q = np.array([[np.cos(phi), -np.sin(phi), 0, x],
-#                     [np.sin(phi), np.cos(phi), 0, y],
-#                     [0, 0, 1, 0.0963],
-#                     [0, 0, 0, 1]])
-
-# u_vals = velocities[:4]
-# Vb = F_pseduo @ u_vals
-# Vb6 = [0, 0, Vb[0], Vb[1], Vb[2], 0]
-
-# mr.MatrixExp6(mr.VecTose3(Vb6))
+print(f"Vel: {GetVelocities(J_pseudo_test, V_test)}")
